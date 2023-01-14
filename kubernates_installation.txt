@@ -1,0 +1,930 @@
+
+-----------kubernates  -------
+
+############ First install the kubenatets on linux machine ######## one is master and other are two workers ######
+
+### Run below cammands on ubuntu machine #########
+
+connect all machine using putty
+
+
+    1  apt-update
+    2  apt update
+    3  apt install docker.io -y
+    4  sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+    5  curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+    6  cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+ deb https://apt.kubernetes.io/ kubernetes-xenial main
+
+ EOF
+
+    7  sudo apt-get update
+    8  apt install -qq -y kubeadm=1.21.0-00 kubelet=1.21.0-00 kubectl=1.21.0-00
+    9  sudo apt-mark hold kubelet kubeadm kubectl                                              ######## uto this apply all commands through all 3 machines #####
+	
+	
+	
+   
+   10  kubeadm init --apiserver-advertise-address=172.31.35.239 --pod-network-cidr=192.168.0.0/16   ########## apply only on master node #### pvt ip of master###
+   
+   11  mkdir -p $HOME/.kube
+   
+   12  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+   
+   13  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+   
+   14  kubeadm join 172.31.35.239:6443 --token zblneg.as4tmtpbx8lm7wx0 \
+        --discovery-token-ca-cert-hash sha256:b5d5f773d9ab3254f847e2d2da3e0b9b27d0432479a65645abcd18aae32fb1e0       #### you can see this msg here copy this cammnd and paste to two workers nodes ######      ### make sure port 6443 open on both workers nodes###
+  
+  15  Install Calico (run it only on master node)
+
+       kubectl create -f https://docs.projectcalico.org/v3.18/manifests/calico.yaml                          ###### Calico is a third-party solution developed to provide flexibility and simplify configuring Kubernetes network connectivity  #### Wait for above command and run again it may take a minute or so to get all the nodes in ready state.###                                                                                       
+   
+  
+ 
+        NAME              STATUS   ROLES                  AGE    VERSION
+     ip-172-31-35-239    Ready    control-plane,master   4h2m   v1.21.0
+     ip-172-31-38-184    Ready    <none>                 162m   v1.21.0
+     ip-172-31-45-248    Ready    <none>                 162m   v1.21.0
+
+
+  16  vi pods2.yml                                                                       ##### create yaml file manifest file ######
+  
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo devops-group; sleep 5 ; done"]
+  restartPolicy: Never         # Defaults to Always
+
+:wq
+
+  17  kubectl apply -f pods2.yml                                                    ######### apply and crete pods ######
+  
+  18  kubectl get pods -o wide                                                      ######### more information about pods where pods get creted #######
+
+  19   kubectl describe pod/test                                                    ######### more datail about pods ##############
+  
+  20  kubectl logs -f test                                                          ########## you can see inside the container ########
+  
+  21  kubectl logs -f test -c c00                                                   ########## you can see inside the container specific container ########
+  
+  22 kubectl delete pod test                                                        ########## you can delete pod or you can direclty deleted yml file #######
+
+  23 kubectl get pods                                                               ########## check pods ########
+
+
+  
+#################### kubernates Annotation ##############################
+
+1 vi pod2.yml                                                                         ####### create a yaml file #########
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod
+  annotations:                                                                    ####### annotation inside metadata ########
+    description: hi from devops team
+
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo Hello-Bhupinder; sleep 5 ; done"]
+  restartPolicy: Never
+
+
+wq
+
+
+2 kubectl apply -f pods2.yml                                                   ###### create pods ####
+
+
+3. kubectl describe pod/testpod                                                ########### you can see inside annotations msg #########
+
+4. kubectl delete pod testpod                                                  
+
+
+
+################### multi-containers pods  #######################
+
+
+1.  vi pod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod3
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo devops-team; sleep 5 ; done"]
+    - name: c01
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo aws-team; sleep 5 ; done"]
+
+wq
+
+
+2. kubectl apply -f  testpod3                                                                    ######## you can create pod ########
+
+3. kubectl describe pod testpod3
+
+4. kubectl get pods
+
+5. kubectl logs -f testpod3                                                              ######## pods details ########
+
+
+6.  kubectl logs -f testpod3 -c c00                                                     ######### if you have multiple containers youn can seletct using name ########
+
+7. kubectl exec testpod3 -c c00 -- hostname -i                                          #######  for specific port ip you can see #######
+
+8. kubectl exec testpod3 -it -c c00 -- /bin/bash                                        ###### you can inside the container #########3
+
+10 ps -ef                                                                              ######## inside container cammand running #########
+
+11. exit
+
+12. kubectl delete -f pod2.yml                                                         ######### you can delete yaml file ###########
+
+
+
+
+################  POD ENVIRONMENT  VARIABLES ############
+
+1. vi pod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: environments
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo hello-devops; sleep 5 ; done"]
+      env:                        # List of environment variables to be used inside the pod
+      - name: MYNAME
+        value: PATIL
+
+wq
+
+2. kubectl apply -f pod2.yml
+
+3. kubectl exec environments -it -c c00 -- /bin/bash                                        ###### you can inside the container #########
+
+4. env                                                                                       #### all detail #####
+
+5. echo $MYNAME                                                                           ####### you alredy put variable in yaml #######
+
+6. PATIL                                                                                  ####### output display ###########3
+
+7. exit
+
+8. kubectl delete -f pod2.yml 
+
+
+
+
+#################################### POD WITH PORTS map #################33
+
+
+1. vi pod3.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod4
+spec:
+  containers:
+    - name: c00
+      image: httpd
+      ports:
+       - containerPort: 80  
+
+
+wq
+
+2. kubectl apply -f pod3.yml
+
+3. kubectl get pods
+
+4 kubectl get pods -o wide 
+
+5. curl 192.168.101.200:80                                         ############ you can map the container ip #############
+
+
+ 
+######################################## LABELS in kubernates #########################
+
+1. vi pod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: delhipod
+  labels:                                                   
+    env: development
+    class: pods
+spec:
+    containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Devops; sleep 5 ; done"] 
+
+:wq
+
+2. kubectl apply -f pod2.yml                                                         ---------- create pod ----------
+
+3.kubectl get pods -o wide                                                             ----- for more detail ------
+
+4.  kubectl get pods --show-labels                                                      ----------- for show labels inside the yaml file --------
+
+5. kubectl label pods delhipod myname=patil                                           --- you can directly label using cammand so no need to inside playbook for labeling ---
+
+6. kubectl get pods --show-labels   
+
+7. kubectl get pods -l env=development                                                ------- you can find specific labes for pod using this cammand -------
+
+8. kubectl get pods -l env!=development                                                ----- just opposite ----
+
+9. kubectl delete pod -l env=development                                              ------ you can delete pod using lable -----
+
+10. kubectl get pods -l 'env in(development,testing)'                                ------ you can find multiple labels using this cammand -----
+
+11.kubectl get pods -l 'env notin(development,testing)'                              ------- just opposite -----
+
+12. kubectl get pods -l class=pods,env=development                                  -------  you can find multiple labels using this cammand ------- 
+
+13.  kubectl delete pods -l 'env in(development,testing)'                          ---------- delete pods using multiple labeles ------
+ 
+
+
+
+############################## NODE SELECTOR ###################################
+
+1. vi pod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nodelabels
+  labels:
+    env: development
+spec:
+    containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Devops; sleep 5 ; done"]
+    nodeSelector:                                         
+       hardware: t2-medium
+	   
+:wq
+
+
+2. kubectl apply -f pod2.yml                                                         ---------- create pod ----------
+
+3. kubectl describe pod nodelabels                                                   ---- more detail of pods ---
+
+4. kubectl label nodes ip-172-31-45-248 hardware=t2-medium                            ----- must be labels node first ------
+
+5. kubectl describe pod nodelabels                                                     -------- no labels selector done ---
+
+6. kubectl get pods                                                                  ------- pods created with selector --------
+
+7.  kubectl delete -f pod2.yml                                                      ------ delete pods ----
+
+	   
+	   
+	   
+################################### EXAMPLE OF REPLICATION CONTROLLER #######################################
+
+1. vi pod2.yml
+
+kind: ReplicationController               
+apiVersion: v1
+metadata:
+  name: myreplica
+spec:
+  replicas: 2            
+  selector:        
+    myname: Bhupinder Rajput                             
+  template:                
+    metadata:
+      name: testpod6
+      labels:            
+        myname: Bhupinder
+    spec:
+     containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Hello-Devops; sleep 5 ; done"]	   
+		 
+:wq
+
+2. kubectl apply -f pod2.yml                                                         ---------- create pod ---------- 		 
+
+3. kubectl get rc                                                                   ---- rc means replication controller ------
+
+4.  kubectl describe rc myreplica                                                   ------ more detail ------
+
+5. kubectl delete pod myreplica-74r57                                          --- just delete onme pod ...automatically created new one---
+ 
+6. kubectl get pods                                                            ----- check pods -----
+
+7.  kubectl get pods --show-labels                                              --------- show the labels -------
+
+8. kubectl scale --replicas=5 rc -l myname=patil                             ---- you can scale replica 2 to 5 ----- maximise or minimize ---
+
+9. kubectl get pods                                                            ----- check pods -----
+
+10. kubectl delete -f pod2.yml                                                      ------ delete pods ----
+
+          
+############################  REPLICA SET #####################
+
+1. vi pod2.yml
+
+kind: ReplicaSet                                    
+apiVersion: apps/v1                            
+metadata:
+  name: myrs
+spec:
+  replicas: 2  
+  selector:                  
+    matchExpressions:                             # these must match the labels
+      - {key: myname, operator: In, values: [Bhupinder, patil, Bhopendra]}
+      - {key: env, operator: NotIn, values: [production]}
+  template:      
+    metadata:
+      name: testpod7
+      labels:              
+        myname: patil
+    spec:
+     containers:
+       - name: c00
+         image: ubuntu
+         command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]
+:wq
+
+2. kubectl apply -f pod2.yml                                                         ---------- create pod ---------- 		 
+
+3. kubectl get rs                                                                    -------- check replication set ---
+
+4. kubectl get pods                                                            ----- check pods -----
+
+5. kubectl scale --replicas=5 rs/myrs                                       --------- you can scale replica 2 to 5 ----- maximise or minimize ---
+
+6. kubectl get pods                                                            ----- check pods -----
+
+7. kubectl delete rs/myrs                                                     ------ delete pod -----
+
+8. kubectl get rs                                                    ---------- check the pods -------
+
+
+
+
+#################### Deployment Object in Kubernetes ###############################
+ 
+1. vi pod2.yml 
+ 
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments
+spec:
+   replicas: 2
+   selector:     
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: c00
+          image: ubuntu
+          command: ["/bin/bash", "-c", "while true; do echo devops-team; sleep 5; done"]
+		  
+:wq		  
+
+2. kubectl apply -f pod2.yml 		                                                                       ---------- create pod ---------- 	
+
+3. kubectl get rs                                                                    -------- check replication set ---
+
+4. kubectl get pods                                                            ----- check pods -----
+
+5.  kubectl describe deploy mydeployments                                                 ------ more detail ------
+
+6. kubectl scale --replicas=1 deploy mydeployments                               ----- scale up or scale down ---
+
+7. kubectl get deploy                                                          ---- check deployment ---
+
+8. kubectl logs -f mydeployments-5c9876945f-8l47c                              --------- you can see the msg ------
+
+9. vi pod2.yml
+
+
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+   name: mydeployments
+spec:
+   replicas: 2
+   selector:     
+    matchLabels:
+     name: deployment
+   template:
+     metadata:
+       name: testpod
+       labels:
+         name: deployment
+     spec:
+      containers:
+        - name: c00
+          image: centos
+          command: ["/bin/bash", "-c", "while true; do echo aws-team; sleep 5; done"]                        --------some changes in yaml file ------
+		  
+		  :wq
+		  
+		  
+11. kubectl apply -f pod2.yml
+
+12. kubectl get deploy                                                                 ---- check deployment ---		  
+
+13. kubectl get rs
+
+14.  kubectl logs -f mydeployments-77fc54bbfd-t28wj                             ------ now you can see centos os here ans see uodated msg----
+
+15. kubectl exec mydeployments-77fc54bbfd-t28wj -- cat /etc/os-release              ------ all detail related to os -------
+
+16.  kubectl rollout status deployment mydeployments                                  -------- ypu can shift to privious version ---
+
+17. kubectl rollout history deployment mydeployments                                      ----- check hostroy chanhes for deployment ----
+
+18. kubectl rollout undo deploy/mydeployments                                       -------- shifted to privious version ---
+
+19. kubectl get rs                                                              --------check the pods ----
+
+20. kubectl get pods
+
+21. kubectl logs -f  mydeployments-5c9876945f-6ckg9                               ------ finally rolled back you can see here privious msg -----
+
+22. kubectl exec mydeployments-5c9876945f-6ckg9 -- cat /etc/os-release                   ------   all detail related to os ---
+
+23. kubectl delete -f pod2.yml
+
+
+
+
+########################## Kubernetes Networking - Kubernetes Services, Nodeport and Volumes ############################
+
+######## connection between two pods within the same pod in yaml#############
+
+1. vi pod2.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod
+spec:
+  containers:
+    - name: c00
+      image: ubuntu
+      command: ["/bin/bash", "-c", "while true; do echo Hello-testing; sleep 5 ; done"]
+    - name: c01
+      image: httpd
+      ports:
+       - containerPort: 80
+	   
+:wq
+
+
+2. kubectl apply -f pod2.yml  
+
+3. kubectl get pods 
+
+4.  kubectl exec  testpod -it -c c00 -- /bin/bash                                         --------  inside the container c00 -----
+
+5. apt update && apt install curl                                                          ---- installl curl for checking connections ----its not work then try below ---
+
+6. sudo apt update
+  sudo apt upgrade 
+  sudo apt install curl
+  curl --version
+  
+7. curl localhost:80                                                                  --- you can communicate to other container --- its work output---
+
+8. exit                                                                             --- now you can outside the container ----
+
+9.kubectl delete -f pod2.yml                                                        --- delete the pods ----
+
+
+
+  ######## connection between two pods with different pod in yaml#############
+  
+1. vi pod2.yml                                                                        ---- crete first pod ---  
+  
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod1
+spec:
+  containers:
+    - name: c01
+      image: nginx
+      ports:
+       - containerPort: 80
+
+	   
+:wq
+
+
+2. vi pod3.yml 	                                                                             ---- crete second pod ---                                     
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: testpod4
+spec:
+  containers:
+    - name: c03
+      image: httpd
+      ports:
+       - containerPort: 80
+
+:wq
+
+
+3. kubectl apply -f pod2.yml
+
+4. kubectl apply -f pod3.yml
+
+5. kubectl get pods -o wide                                                          ----- more detail -----
+
+6. curl 192.168.101.220:80                                                         --- you can connect to other pod ----
+
+7. kubectl delete -f pod2.yml same as pod3.yml                                ------- delete pods ------
+
+
+###############please complite above parts #################################################
+
+
+
+
+
+
+
+
+
+
+
+
+################### Persistent Volume and LivenessProbe in Kubernetes ################################
+
+1.vi mypv.yml                                                                                        --------- create persistence volume ----------
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: myebsvol
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  awsElasticBlockStore:
+    volumeID: vol-08aeb35c2d9c8d738	          # YAHAN APNI EBS VOLUME ID DAALO
+    fsType: ext4
+:wq
+
+2. kubectl apply -f mypv.yml                                                                          ---- pod created ---
+
+3. kubectl get pv                                                                              --- check persistence volume created ----
+
+4. vi mypvc.yml                                                                                ---- cretate one more yml for persistentVolumeclaime ---- you can mentioned here allocation space for perticular noe----
+
+5.  kubectl apply -f mypvc.yml                                                                 ---- pod created ---
+
+6. kubectl get pvc                                                                         --------check persistence volume claim created -----volume claim ---1 GB reserved----
+
+7.vi deploympvc.yml
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pvdeploy
+spec:
+  replicas: 1
+  selector:      # tells the controller which pods to watch/belong to
+    matchLabels:
+     app: mypv
+  template:
+    metadata:
+      labels:
+        app: mypv
+    spec:
+      containers:
+      - name: shell
+        image: centos
+        command: ["bin/bash", "-c", "sleep 10000"]
+        volumeMounts:
+        - name: mypd
+          mountPath: "/tmp/persistent"
+      volumes:
+        - name: mypd
+          persistentVolumeClaim:
+            claimName: myebsvolclaim
+
+
+
+:wq
+
+
+8. kubectl get prod                                                                                     -----check pods ---
+
+
+9. kubectl get rs                                                                                    ----- check replicas ----
+
+10.  kubectl exec pvdeploy-8587567959-6l5gx -it -- /bin/bash                                      -------- you are inside the conatiner ----
+
+11. cd /tmp/persistent/                                                                       -------- change dir -----------
+
+12.vi testfile
+
+hi from devops team
+
+:wq
+
+13. ls                                                                                            --check the file ----
+
+14. exit                                                                                         --- exit the container ---
+
+15. kubectl pod  pvdeploy-8587567959-6l5gx                                                       ------- delete the pod --- if you observe create one more new pod bcoz of replica---
+
+16.kubectl get pods                                                                          ---- check the newly created port -----
+
+17. kubectl exec pvdeploy-8587567959-6l5gx -it -- /bin/bash                                       -------- you are inside the conatiner newly created -----
+
+18. cd /tmp/persistent/                                                                       -------- change dir -----------
+
+19. ls
+
+20. testfile here                                                                       ------- hence prove volume not deleted even delete the pod ---
+
+21. kubectl delete -f deploympvc.yml                                                  --- delete the pods ---
+
+
+
+############################# LivenessProbe or helthcheck ########################
+
+1. vi liveness.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: mylivenessprobe
+spec:
+  containers:
+  - name: liveness
+    image: ubuntu
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 1000
+    livenessProbe:                                          
+      exec:
+        command:                                         
+        - cat                
+        - /tmp/healthy
+      initialDelaySeconds: 5          
+      periodSeconds: 5                                 
+      timeoutSeconds: 30         
+	  
+:wq
+
+2. kubectl apply -f liveness.yml
+
+3. kubectl get pods 
+
+4. kubectl  exec mylivenessprobe -it -- bin/bash                                                                   --- you are inside the container ---
+
+5. cat /tmp/healthy
+
+6.  echo $?                                                                                                    --- check the cammands inside the container ----it output 0 means ok all ---
+
+7. cat /tmp/test                                                                                       ------  no test file here hence its shows 1 or any number ---
+
+8. echo $?                                                                                   ---------- shows 1 or any number ---
+
+9. exit
+
+10.  kubectl describe pod mylivenessprobe                                                            --- check the status -----
+
+11.  kubectl delete -f deploympvc.yml                                                  --- delete the pods ---
+
+
+                                                                                                       
+ 
+############################### kubernetes configmap and secrets ####################################
+
+1. vi sample.conf
+	  
+ hi this is from devops team
+ 
+ 
+:wq
+
+2.  kubectl create configmap mymap --from-file=sample.conf                                                               ---- create sample.confi file ---mymap accociated with config--
+
+3. kubectl get configmap                                                                                     --- check the confimap object ---
+
+4.  kubectl describe configmap mymap                                                      ----------- you can see inside mymp containt ----------
+
+5. vi deployconfigmap.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolconfig
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]
+    volumeMounts:
+      - name: testconfigmap
+        mountPath: "/tmp/config"   # the config files will be mounted as ReadOnly by default here
+  volumes:
+  - name: testconfigmap
+    configMap:
+       name: mymap   # this should match the config map name created in the first step
+       items:
+       - key: sample.conf
+         path: sample.conf
+
+:wq
+
+6.  kubectl apply -f deployconfigmap.yml
+
+7.  kubectl exec myvolconfig  -it -- /bin/bash                                                    ---- you are inside the container ------
+
+8.  cd /tmp                                                                                        ---- change dir ---
+
+9. ls                                                                                              --- so you can see container map with configmap----which is configuration file --
+
+10.  cd config
+
+11. cat sample.conf                                                                  --- you can see the msg here ----
+
+12.  kubectl delete -f deployconfigmap.yml
+
+
+
+
+##########  same as above using environment ##################### mount env insted of volume ##########
+
+1.  vi deployenv.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myenvconfig
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "while true; do echo Technical-Guftgu; sleep 5 ; done"]
+    env:
+    - name: MYENV         # env name in which value of the key is stored
+      valueFrom:
+        configMapKeyRef:
+          name: mymap      # name of the config created
+          key: sample.conf            
+		  
+		  
+		  
+:wq
+
+2.  kubectl apply -f deployenv.yml   
+
+3. kubectl get pods
+
+4.  kubectl exec myenvconfig -it -- /bin                                                      ---- you are inside the container ------                
+
+5. env                                                                        ------  yiu can see here env inside config file ----
+
+6. echo $MYENV
+
+7.  kubectl delete -f deployenv.yml 
+
+
+
+########################### kubernetes secret ###################333
+
+1. echo "root" > username.txt;echo "password" > password.txt
+
+2. cat username.txt                                                             -------- you can see the username ----
+
+3.  kubectl create secret generic mysecret --from-file=username.txt --from-file=password.txt        -------
+             
+4.  kubectl get secret
+
+5. kubectl describe secret mysecret                                     ----- you can see the file but username and password hide ----you can stored you sensitive data---
+
+6. vi deploysecret.yml
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolsecret
+spec:
+  containers:
+  - name: c1
+    image: centos
+    command: ["/bin/bash", "-c", "while true; do echo Technical-guftgu; sleep 5 ; done"]
+    volumeMounts:
+      - name: testsecret
+        mountPath: "/tmp/mysecrets"   # the secret files will be mounted as ReadOnly by default here
+  volumes:
+  - name: testsecret
+    secret:
+       secretName: mysecretc
+
+:wq
+
+3. kubectl apply -f deploysecret.yml     
+
+4.kubectl get pods
+
+5. kubectl exec myvolsecret -it -- bin/bash
+
+6.  cd /tmp/mysecrets
+
+7. cat username.txt                                                     ---- you can see here your password ----which means sensetive data used --
+
+8.kubectl delete -f  deploysecret.yml
+
+
+######################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+

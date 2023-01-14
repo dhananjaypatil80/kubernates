@@ -1,4 +1,4 @@
-
+http://www.devopsworld.co.in/p/eks-cluster-lab-setup.html
 -----------kubernates  -------
 
 ############ First install the kubenatets on linux machine ######## one is master and other are two workers ######
